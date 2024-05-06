@@ -25,11 +25,11 @@ class Block(nn.Module):
         return x
     
 
-class ResNet_18(nn.Module):
+class ResNet18(nn.Module):
     
-    def __init__(self, num_classes, image_channels=3):
+    def __init__(self, num_classes=10, image_channels=3):
         
-        super(ResNet_18, self).__init__()
+        super(ResNet18, self).__init__()
         self.in_channels = 64
         self.conv1 = nn.Conv2d(image_channels, 64, kernel_size=7 , stride=2, padding=3)
         self.bn1 = nn.BatchNorm2d(64)
@@ -44,6 +44,26 @@ class ResNet_18(nn.Module):
         
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512, num_classes)
+
+        # based on this blog and resnet paper, I am making this following change, we will discuss it in the meeting
+        # https://adityassrana.github.io/blog/theory/2020/08/26/Weight-Init.html#Okay,-now-why-can't-we-trust-PyTorch-to-initialize-our-weights-for-us-by-default?
+        
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        #if zero_init_residual:
+            #for m in self.modules():
+                #if isinstance(m, Bottleneck):
+                    #nn.init.constant_(m.bn3.weight, 0)
+                #elif isinstance(m, BasicBlock):
+                    #nn.init.constant_(m.bn2.weight, 0)
         
     def __make_layer(self, in_channels, out_channels, stride):
         
